@@ -52,7 +52,7 @@ def test_busqueda_legitima_devuelve_funciones(buscar):
 
     assert respuesta.status_code == 200
     assert "Resultados buscando por: Inception" in mensaje_de_busqueda(respuesta)
-    assert respuesta.text.count("funcion-card") >= 2
+    assert respuesta.text.count('class="funcion-card"') >= 2
 
 
 def test_busqueda_vacia_muestra_todas_las_funciones(buscar):
@@ -89,7 +89,7 @@ def test_aritmetica_no_filtra_resultados_por_el_valor_calculado(buscar):
     respuesta = buscar("'Incep'+'tion'")
 
     assert respuesta.status_code == 200
-    assert "funcion-card" not in respuesta.text
+    assert 'class="funcion-card"' not in respuesta.text
 
 
 # --------------------------------------------------------------------------
