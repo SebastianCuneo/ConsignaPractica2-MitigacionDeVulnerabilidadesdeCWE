@@ -1,0 +1,4 @@
+# Dependencias para ejecutar las pruebas de seguridad (Ejercicios 1 a 4).
+flask==3.0.0     # aplicaciones de los Ejercicios 1 y 2 (pruebas unitarias)
+pytest==9.2.0    # framework de pruebas
+requests==2.34.2 # cliente HTTP para las pruebas de integración (Ejercicios 3 y 4)
