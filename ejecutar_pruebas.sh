@@ -25,7 +25,14 @@ preparar_python() {
 }
 
 registrar() { # $1 = nombre, $2 = código de salida
-    if [ "$2" -eq 0 ]; then RESUMEN+=("PASA   $1"); else RESUMEN+=("FALLA  $1"); fi
+    # Código 2 = pytest abortó porque la aplicación no responde (problema de
+    # ambiente, no de seguridad): se informa como ERROR para no confundirlo
+    # con una vulnerabilidad detectada.
+    case "$2" in
+        0) RESUMEN+=("PASA   $1") ;;
+        2) RESUMEN+=("ERROR  $1 (la aplicación no respondió, revisar Docker)") ;;
+        *) RESUMEN+=("FALLA  $1") ;;
+    esac
 }
 
 pytest_en() { # $1 = directorio del ejercicio, $2 = descripción
@@ -60,10 +67,20 @@ fi
 
 if [ "$MODO" = "todas" ] || [ "$MODO" = "integracion" ]; then
     preparar_python
-    levantar Ejercicio3
-    levantar Ejercicio4
-    pytest_en Ejercicio3 "Ejercicio 3 - File Upload (integración)"
-    pytest_en Ejercicio4 "Ejercicio 4 - SSTI (integración)"
+    if ! docker info >/dev/null 2>&1; then
+        echo ">> ERROR: Docker no está disponible; no se ejecutan las pruebas de integración."
+        RESUMEN+=("ERROR  Ejercicio 3 - File Upload (Docker no disponible)")
+        RESUMEN+=("ERROR  Ejercicio 4 - SSTI (Docker no disponible)")
+    else
+        for ej in "3:File Upload" "4:SSTI"; do
+            numero="${ej%%:*}"; nombre="Ejercicio $numero - ${ej#*:} (integración)"
+            if levantar "Ejercicio$numero"; then
+                pytest_en "Ejercicio$numero" "$nombre"
+            else
+                RESUMEN+=("ERROR  $nombre (no se pudo levantar el contenedor)")
+            fi
+        done
+    fi
 fi
 
 echo; echo "=================== RESUMEN ($(git -C "$RAIZ" branch --show-current)) ==================="

@@ -44,7 +44,12 @@ pip install -r requirements-test.txt
 ```
 
 El script crea el `.venv` si no existe, levanta los contenedores necesarios
-y al final muestra un resumen `PASA` / `FALLA` por ejercicio.
+y al final muestra un resumen por ejercicio:
+
+- `PASA`: todas las pruebas pasaron (vulnerabilidad mitigada).
+- `FALLA`: alguna prueba detectó la vulnerabilidad.
+- `ERROR`: problema de ambiente (por ejemplo Docker apagado o la aplicación no
+  respondió); no dice nada sobre la seguridad del código y hay que volver a ejecutar.
 
 Para comparar las dos branches:
 
