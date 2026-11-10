@@ -1,8 +1,9 @@
 package com.cinebuscador.controller;
 
-import com.cinebuscador.config.EncryptionService;
 import com.cinebuscador.repository.UserRepository;
 import com.cinebuscador.model.User;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,7 +13,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 public class AuthController {
 
+    /**
+     * Mitigación CWE-257 / CWE-321 / CWE-327 (almacenamiento inseguro):
+     * las contraseñas ya no se cifran con AES/ECB y una clave embebida en el
+     * código (reversible por cualquiera con acceso al código). Se guarda un hash
+     * BCrypt: unidireccional, con sal aleatoria por usuario y costo ajustable.
+     */
+    static final int COSTO_BCRYPT = 12;
+
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder(COSTO_BCRYPT);
 
     public AuthController(UserRepository userRepository) {
         this.userRepository = userRepository;
@@ -31,15 +41,12 @@ public class AuthController {
     public String login(@RequestParam String username, @RequestParam String password, Model model) {
         User user = userRepository.findByUsername(username).orElse(null);
 
-        if (user != null) {
-            // Descifrar la contraseña almacenada y comparar con la ingresada
-            String decryptedPassword = EncryptionService.decrypt(user.getPassword());
-            if (password.equals(decryptedPassword)) {
-                model.addAttribute("loginSuccess", true);
-                model.addAttribute("welcomeUser", username);
-                model.addAttribute("encryptedPassword", user.getPassword());
-                return "index";
-            }
+        // Se compara contra el hash; la contraseña almacenada nunca se descifra
+        // ni se envía a la vista.
+        if (user != null && passwordEncoder.matches(password, user.getPassword())) {
+            model.addAttribute("loginSuccess", true);
+            model.addAttribute("welcomeUser", username);
+            return "index";
         }
         model.addAttribute("loginError", "Usuario o contraseña incorrecta");
         addForms(model);
@@ -65,12 +72,11 @@ public class AuthController {
 
         com.cinebuscador.model.User nuevoUsuario = new com.cinebuscador.model.User();
         nuevoUsuario.setUsername(username);
-        nuevoUsuario.setPassword(EncryptionService.encrypt(password));
+        nuevoUsuario.setPassword(passwordEncoder.encode(password));
         userRepository.save(nuevoUsuario);
 
         model.addAttribute("registerSuccess", true);
         model.addAttribute("registeredUsername", username);
-        model.addAttribute("encryptedPassword", EncryptionService.encrypt(password));
         addForms(model);
         return "index";
     }
