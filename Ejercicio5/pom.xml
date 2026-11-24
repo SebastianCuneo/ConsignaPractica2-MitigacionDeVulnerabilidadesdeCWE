@@ -39,6 +39,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
+        <!-- Hash de contraseñas con BCrypt (solo el módulo de criptografía de Spring Security). -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
         <!-- Pruebas unitarias (JUnit 5 + Mockito). Ver README. -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

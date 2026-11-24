@@ -20,16 +20,29 @@ def close_db(exception):
         db.close()
 
 
+# Mitigación CWE-89: los identificadores de ORDER BY no pueden parametrizarse,
+# por eso se eligen de listas blancas fijas y nunca se usa el valor recibido.
+COLUMNAS_ORDEN = {
+    'nombre': 'peliculas.nombre',
+    'fecha': 'funciones.fecha_hora',
+}
+SENTIDOS_ORDEN = {'ASC': 'ASC', 'DESC': 'DESC'}
+
+
 def buscar_funciones(query, sort_by='nombre', sort_dir='ASC'):
     db = get_db()
-    sql = f"SELECT peliculas.nombre as pelicula, funciones.fecha_hora, " \
-          f"(funciones.asientos_totales - funciones.asientos_ocupados) as disponibles " \
-          f"FROM funciones " \
-          f"JOIN peliculas ON funciones.pelicula_id = peliculas.id " \
-          f"WHERE peliculas.nombre LIKE '%{query}%' " \
-          f"ORDER BY {'peliculas.nombre' if sort_by == 'nombre' else 'funciones.fecha_hora'} " \
-          f"{sort_dir}"
-    return db.execute(sql).fetchall()
+    columna = COLUMNAS_ORDEN.get(sort_by, COLUMNAS_ORDEN['nombre'])
+    sentido = SENTIDOS_ORDEN.get(str(sort_dir).upper(), 'ASC')
+    # El texto de búsqueda viaja como parámetro (?): nunca forma parte del SQL.
+    sql = (
+        "SELECT peliculas.nombre as pelicula, funciones.fecha_hora, "
+        "(funciones.asientos_totales - funciones.asientos_ocupados) as disponibles "
+        "FROM funciones "
+        "JOIN peliculas ON funciones.pelicula_id = peliculas.id "
+        "WHERE peliculas.nombre LIKE ? "
+        f"ORDER BY {columna} {sentido}"
+    )
+    return db.execute(sql, (f"%{query}%",)).fetchall()
 
 
 @app.route('/')
@@ -50,5 +63,6 @@ def index():
 if __name__ == '__main__':
     import os
     host=os.environ.get('FLASK_HOST', '0.0.0.0')
-    debug = os.environ.get('DEBUG_MODE', 'true').lower() in ('true', '1', 'yes')
+    # El modo debug de Flask expone trazas (y la consola de Werkzeug): apagado por defecto.
+    debug = os.environ.get('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
     app.run(debug=debug,host=host)

@@ -20,19 +20,48 @@ def close_db(exception):
         db.close()
 
 
+# Mitigación CWE-89: columna y sentido de ORDER BY salen de listas blancas.
+COLUMNAS_ORDEN = {
+    'nombre': 'peliculas.nombre',
+    'fecha': 'funciones.fecha_hora',
+}
+SENTIDOS_ORDEN = {'ASC': 'ASC', 'DESC': 'DESC'}
+
+# Mitigación CWE-79 (defensa en profundidad): aunque un dato se escapara mal,
+# el navegador no ejecuta scripts inline ni de otros orígenes.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data:; "
+    "object-src 'none'; "
+    "base-uri 'none'; "
+    "form-action 'self'; "
+    "frame-ancestors 'none'"
+)
+
+
+@app.after_request
+def cabeceras_de_seguridad(respuesta):
+    respuesta.headers['Content-Security-Policy'] = CONTENT_SECURITY_POLICY
+    respuesta.headers['X-Content-Type-Options'] = 'nosniff'
+    return respuesta
+
+
 def buscar_funciones(query, sort_by='nombre', sort_dir='ASC'):
     db = get_db()
+    columna = COLUMNAS_ORDEN.get(sort_by, COLUMNAS_ORDEN['nombre'])
+    sentido = SENTIDOS_ORDEN.get(str(sort_dir).upper(), 'ASC')
     sql = (
-        f"SELECT peliculas.nombre as pelicula, funciones.fecha_hora, "
-        f"(funciones.asientos_totales - funciones.asientos_ocupados) as disponibles, "
-        f"peliculas.descripcion as descripcion, peliculas.id as id "
-        f"FROM funciones "
-        f"JOIN peliculas ON funciones.pelicula_id = peliculas.id "
-        f"WHERE peliculas.nombre LIKE '%{query}%' "
-        f"ORDER BY {'peliculas.nombre' if sort_by == 'nombre' else 'funciones.fecha_hora'} "
-        f"{sort_dir}"
+        "SELECT peliculas.nombre as pelicula, funciones.fecha_hora, "
+        "(funciones.asientos_totales - funciones.asientos_ocupados) as disponibles, "
+        "peliculas.descripcion as descripcion, peliculas.id as id "
+        "FROM funciones "
+        "JOIN peliculas ON funciones.pelicula_id = peliculas.id "
+        "WHERE peliculas.nombre LIKE ? "
+        f"ORDER BY {columna} {sentido}"
     )
-    return db.execute(sql).fetchall()
+    return db.execute(sql, (f"%{query}%",)).fetchall()
 
 
 @app.route('/')
@@ -82,5 +111,5 @@ def edit_post(pelicula_id):
 if __name__ == '__main__':
     import os
     host=os.environ.get('FLASK_HOST', '0.0.0.0')
-    debug = os.environ.get('DEBUG_MODE', 'true').lower() in ('true', '1', 'yes')
+    debug = os.environ.get('DEBUG_MODE', 'false').lower() in ('true', '1', 'yes')
     app.run(debug=debug,host=host)

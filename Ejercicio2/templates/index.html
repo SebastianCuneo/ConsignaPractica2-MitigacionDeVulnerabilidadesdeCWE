@@ -115,7 +115,7 @@
     </div>
 
     <div class="container">
-        <form class="search-box" method="get" action="/">
+        <form id="form-busqueda" class="search-box" method="get" action="/">
             <input type="text" name="buscar" placeholder="Buscar por nombre de película..." value="{{ query }}">
             <button type="submit">Buscar</button>
         </form>
@@ -123,12 +123,12 @@
         {% if query %}
         <div class="sort-controls">
             <label>Ordenar por:</label>
-            <select name="ordenar_por" onchange="this.form.submit()">
+            <select name="ordenar_por" class="auto-submit" form="form-busqueda">
                 <option value="nombre" {{ 'selected' if sort_by == 'nombre' }}>Nombre de película</option>
                 <option value="fecha" {{ 'selected' if sort_by == 'fecha' }}>Fecha y hora</option>
             </select>
             <label>Sentido:</label>
-            <select name="sentido" onchange="this.form.submit()">
+            <select name="sentido" class="auto-submit" form="form-busqueda">
                 <option value="ASC" {{ 'selected' if sort_dir == 'ASC' }}>Ascendente ↑</option>
                 <option value="DESC" {{ 'selected' if sort_dir == 'DESC' }}>Descendente ↓</option>
             </select>
@@ -212,5 +212,6 @@
             </div>
         {% endif %}
     </div>
+    <script src="{{ url_for('static', filename='ordenar.js') }}"></script>
 </body>
 </html>
